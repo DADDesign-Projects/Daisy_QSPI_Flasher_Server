@@ -232,6 +232,71 @@ bool Dad::cServer::addFile(const std::string& filePath, const std::string& fileN
     if (m_IndexFile >= DIR_FILE_COUNT) {
         return false;
     }
+    if (true == isImageFile(fileName)) {
+        return addImageFile(filePath, fileName);
+    }else {
+        return addCommonFile(filePath, fileName);
+    }
+}
+// Add a image file to the transfer buffer
+bool Dad::cServer::addImageFile(const std::string& filePath, const std::string& fileName) {
+    CImage image;
+    HBITMAP hBmp;
+
+	// Load image file
+	if (FAILED(image.Load(CString(filePath.c_str())))) {
+		return false;
+	}
+
+	// Get image dimensions
+	int width = image.GetWidth();
+	int height = image.GetHeight();
+	int bpp = image.GetBPP();
+
+    // Check for free space in buffer
+	if ((m_pFirstFreeBuff + width * height * bpp / 8) > m_pEndBuff) {
+		return false;
+	}
+    
+    // Create file entry in directory
+    strncpy_s(m_pFile->Name, fileName.c_str(), MAX_ENTRY_NAME - 1);
+    m_pFile->Size = width * height * bpp / 8;
+    m_pFile->DataAddress = QSPI_ADRESSE + (m_pFirstFreeBuff - m_pBuff);
+
+	// Copy image data to buffer
+	if (bpp == 24) {
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				COLORREF color = image.GetPixel(x, y);
+				*m_pFirstFreeBuff++ = GetBValue(color);
+				*m_pFirstFreeBuff++ = GetGValue(color);
+				*m_pFirstFreeBuff++ = GetRValue(color);
+                *m_pFirstFreeBuff++ = 255;
+			}
+		}
+	}
+    else if (bpp == 32) {
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                uint8_t *pPixel = (uint8_t *) image.GetPixelAddress(x,y);
+                *m_pFirstFreeBuff++ = pPixel[2];
+                *m_pFirstFreeBuff++ = pPixel[1];
+                *m_pFirstFreeBuff++ = pPixel[0];
+                *m_pFirstFreeBuff++ = pPixel[3];
+            }
+        }
+    }
+	else {
+		return false;
+	}
+
+    // Increment pointers
+	m_pFile++;
+	return true;
+}
+
+// Add a common file to the transfer buffer
+bool Dad::cServer::addCommonFile(const std::string& filePath, const std::string& fileName) {
 
     // Open the file
     std::ifstream file(filePath, std::ios::binary | std::ios::ate);
@@ -266,4 +331,28 @@ bool Dad::cServer::addFile(const std::string& filePath, const std::string& fileN
 
     file.close();
     return true;
+}
+// Test if file is image file
+bool  Dad::cServer::isImageFile(const std::string& FileName) {
+    // List of valid extensions
+    const std::string validExtensions[] = { ".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".gif" };
+
+    // Find the position of the last dot (.)
+    size_t dotPosition = FileName.find_last_of('.');
+    if (dotPosition == std::string::npos) {
+        return false; // No extension found
+    }
+
+    // Extract the file extension and convert it to lowercase
+    std::string extension = FileName.substr(dotPosition);
+    std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
+
+    // Check if the extension matches any in the list of valid extensions
+    for (const auto& validExtension : validExtensions) {
+        if (extension == validExtension) {
+            return true; // Valid image file
+        }
+    }
+
+    return false; // Not a valid image file
 }

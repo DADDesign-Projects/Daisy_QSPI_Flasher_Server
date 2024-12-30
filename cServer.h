@@ -10,6 +10,7 @@
 #include "Flasher.h"
 
 namespace Dad {
+    
     // Server management class
     class cServer {
     public:
@@ -31,6 +32,12 @@ namespace Dad {
         // Add a file to the transfer buffer
         bool addFile(const std::string& filePath, const std::string& fileName);
 
+        // Add a file to the transfer buffer
+        bool addCommonFile(const std::string& filePath, const std::string& fileName);
+
+        // Add a imagefile to the transfer buffer
+        bool addImageFile(const std::string& filePath, const std::string& fileName);
+
         // Read the size of loaded data
         uint32_t getDataSize() {
             return m_pFirstFreeBuff - m_pBuff;
@@ -49,6 +56,9 @@ namespace Dad {
 
         // Configure the COM port with the specified parameters
         bool Config(DWORD BaudRate, BYTE ByteSize, BYTE Parity, BYTE StopBits);
+
+        // Test if file is image file
+        bool isImageFile(const std::string& FileName);
 
         // QSPI buffer
         uint32_t    m_QSPI_Size = 0;                // QSPI buffer size
