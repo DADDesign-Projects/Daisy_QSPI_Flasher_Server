@@ -117,7 +117,6 @@ BOOL CFlasherServerDlg::OnInitDialog()
 	// TODO: ajoutez ici une initialisation supplémentaire
 	OnBnClickedRefresh();
 	m_Edit.SetWindowText(L"Choose :\r\n - a communication port,\r\n - the files to be transferred to\r\n    daisy's QSPI Flash memory.\r\n\r\nClick Flash");
-
 	return TRUE;  // retourne TRUE, sauf si vous avez défini le focus sur un contrôle
 }
 
@@ -173,18 +172,39 @@ HCURSOR CFlasherServerDlg::OnQueryDragIcon()
 
 void CFlasherServerDlg::OnBnClickedAddFile()
 {
-	// TODO: ajoutez ici le code de votre gestionnaire de notification de contrôle
+	// Vérification du nombre maximal de fichiers
 	int NbFiles = m_ListeFiles.GetCount();
 	if (NbFiles >= DIR_FILE_COUNT) {
 		MessageBox(L"Maximum file number size reached", L"Error Add File", MB_OK | MB_ICONWARNING);
 		return;
 	}
-	CFileDialog FileDialog(true);
+
+	// Configuration de la boîte de dialogue pour la sélection multiple
+	CFileDialog FileDialog(TRUE, NULL, NULL, OFN_ALLOWMULTISELECT | OFN_EXPLORER, L"All Files|*.*||");
+
+	// Allocation d'un buffer pour stocker plusieurs chemins
+	const int BufferSize = 4096;
+	wchar_t Buffer[BufferSize] = { 0 };
+	FileDialog.m_ofn.lpstrFile = Buffer;
+	FileDialog.m_ofn.nMaxFile = BufferSize;
+
 	if (IDOK == FileDialog.DoModal()) {
-		CString NomFichier = FileDialog.GetPathName();
-		m_ListeFiles.InsertString(NbFiles, NomFichier);
+		POSITION pos = FileDialog.GetStartPosition();
+		while (pos) {
+			CString NomFichier = FileDialog.GetNextPathName(pos);
+
+			// Vérifier si le nombre de fichiers dépasse la limite
+			if (m_ListeFiles.GetCount() >= DIR_FILE_COUNT) {
+				MessageBox(L"Maximum file number size reached", L"Error Add File", MB_OK | MB_ICONWARNING);
+				break;
+			}
+
+			// Ajouter le fichier à la liste
+			m_ListeFiles.InsertString(m_ListeFiles.GetCount(), NomFichier);
+		}
 	}
 }
+
 
 
 void CFlasherServerDlg::OnBnClickedDeleteFile()
