@@ -327,6 +327,9 @@ bool Dad::cServer::addCommonFile(const std::string& filePath, const std::string&
 
     // Increment pointers
     m_pFirstFreeBuff += fileSize;
+    // Align to 4 bytes
+    m_pFirstFreeBuff = (uint8_t*)(((uintptr_t)m_pFirstFreeBuff + 3) & ~3);
+    
     m_pFile++;
 
     file.close();
